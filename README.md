@@ -1,8 +1,9 @@
-# ReproMCP Visual
+# IssueSensor-MCP: ReproMCP Visual
 
-**Multimodal, evidence-first bug triage for AI coding agents.** ReproMCP Visual is an original Python MCP server that combines a screenshot and bug report with deterministic repository inspection, exact code/line references, and real test output. It asks **Gemma 4** (`gemma-4-26b-a4b-it` or `gemma-4-31b-it`) to interpret visual symptoms alongside code context, returning a structured diagnosis that strictly separates deterministic evidence from AI hypotheses.
+**Multimodal, evidence-first bug triage for AI coding agents.** **IssueSensor-MCP** implements **ReproMCP Visual** — an original Python MCP server combining visual issue screenshots and bug descriptions with deterministic repository inspection, exact code/line references, and real test execution. It asks Google's open-weight **Gemma 4** (`gemma-4-26b-a4b-it` or `gemma-4-31b-it`) to interpret visual symptoms alongside source code context, returning a structured diagnosis that strictly separates deterministic evidence from AI hypotheses.
 
 > **Important Security & Privacy Disclosure:** Test execution runs repository code and **is NOT a sandbox**. Subprocesses run with the local user's operating-system permissions. Execution is disabled by default and requires both an explicit environment variable opt-in (`REPROMCP_ALLOW_TEST_EXECUTION=true`) and per-call confirmation (`confirm_execution=true`). Screenshots supplied to Gemma are uploaded to the Google Gemini API for multimodal inference; never supply images containing secrets, API keys, credentials, or confidential personal data.
+
 
 ## Why this exists
 

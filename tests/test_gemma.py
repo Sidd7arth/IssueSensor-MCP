@@ -36,8 +36,18 @@ def test_get_configured_gemma_model(monkeypatch):
 
     # Reject Gemini-branded model substitution
     monkeypatch.setenv("GEMMA_MODEL", "gemini-1.5-pro")
-    with pytest.raises(ValueError, match="Gemini-branded model"):
+    with pytest.raises(ValueError, match="not a permitted Gemma 4 model"):
         get_configured_gemma_model()
+
+    # Reject arbitrary third-party models
+    monkeypatch.setenv("GEMMA_MODEL", "other-provider-model")
+    with pytest.raises(ValueError, match="not a permitted Gemma 4 model"):
+        get_configured_gemma_model()
+
+    monkeypatch.setenv("GEMMA_MODEL", "gpt-4o")
+    with pytest.raises(ValueError, match="not a permitted Gemma 4 model"):
+        get_configured_gemma_model()
+
 
 
 def test_parse_gemma_response_valid():

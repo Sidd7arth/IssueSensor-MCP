@@ -255,9 +255,9 @@ def inspect_workspace(root: Path, max_files: int = MAX_FILES_DISCOVERED) -> dict
 
     return {
         "workspace": root.name,
-        "absolute_path": str(root),
         "files_listed": len(files),
         "file_list_truncated": total_scanned > max_files,
+
         "total_files_scanned": total_scanned,
         "files": files,
         "top_extensions": dict(extensions.most_common(12)),
@@ -322,13 +322,13 @@ def search_workspace(root: Path, query: str, max_results: int = 12) -> list[dict
 
             results.append({
                 "file": relative(path, root),
-                "absolute_path": str(path.resolve()),
                 "line": number,
                 "text": line.strip()[:280],
                 "snippet": snippet_text,
                 "matched_terms": matched_terms if matched_terms else [exact_lower],
                 "score": score,
             })
+
 
             # Prevent excessive memory allocation on huge result sets
             if len(results) >= MAX_SEARCH_COLLECTION_CAP:

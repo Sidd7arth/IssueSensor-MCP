@@ -5,7 +5,10 @@ import json
 from pathlib import Path
 import pytest
 
+pytest.importorskip("mcp", reason="mcp package required for FastMCP server tests")
+
 import server
+
 
 
 def test_server_inspect_repository_no_workspace(monkeypatch):

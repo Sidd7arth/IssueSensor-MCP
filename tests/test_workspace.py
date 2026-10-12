@@ -94,8 +94,10 @@ def test_inspect_workspace(tmp_path: Path):
 
     data = inspect_workspace(root)
     assert data["workspace"] == root.name
+    assert "absolute_path" not in data
     assert data["files_listed"] == 4
     assert data["file_list_truncated"] is False
+
     assert "Python" in data["detected_languages"]
     assert "Markdown" in data["detected_languages"]
     assert "pyproject.toml" in data["project_manifests_and_docs"]
@@ -124,8 +126,10 @@ def test_exact_search_returns_correct_file_and_line_number(tmp_path: Path):
     assert len(matches) >= 1
     match = matches[0]
     assert match["file"] == "discounts.py"
+    assert "absolute_path" not in match
     assert match["line"] == 3
     assert "def calculate_discount" in match["text"]
+
     assert "   3 | def calculate_discount" in match["snippet"]
     assert match["score"] >= 100  # Exact match boost
 

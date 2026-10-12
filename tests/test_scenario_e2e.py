@@ -19,7 +19,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+pytest.importorskip("mcp", reason="mcp package required for FastMCP server tests")
+
 import server
+
 from repromcp.report import build_triage_report, render_markdown_report
 
 
@@ -210,6 +213,25 @@ def test_e2e_8_no_secrets_or_absolute_paths_leak(demo_workspace: Path, monkeypat
     assert "TopSecretToken987654" not in res_str
 
     # 2. Absolute root path must not be exposed in relative search/test items
+    assert str(demo_workspace) not in res_str
     data = json.loads(res_str)
     for match in data["verified_evidence"]["repository_search"]:
         assert not Path(match["file"]).is_absolute(), f"File path must be relative: {match['file']}"
+        assert "absolute_path" not in match
+
+
+def test_e2e_inspect_and_search_never_leak_absolute_path(demo_workspace: Path):
+    """Verify inspect_repository and search_code never return developer absolute paths."""
+    insp_str = server.inspect_repository()
+    assert str(demo_workspace) not in insp_str
+    insp_data = json.loads(insp_str)
+    assert "absolute_path" not in insp_data
+    for f in insp_data["files"]:
+        assert not Path(f).is_absolute()
+
+    search_str = server.search_code("calculate_discount")
+    assert str(demo_workspace) not in search_str
+    search_data = json.loads(search_str)
+    for match in search_data["matches"]:
+        assert "absolute_path" not in match
+        assert not Path(match["file"]).is_absolute()

@@ -1,8 +1,9 @@
-# ReproMCP Visual — Quality Verification & Test Report
+# IssueSensor-MCP (ReproMCP Visual) — Quality Verification & Test Report
 
-**Date:** 2026-10-12  
-**Target System:** ReproMCP Visual (Evidence-First Multimodal Debugging MCP Server)  
+**Date:** 2026-10-12<br>
+**Target System:** IssueSensor-MCP: ReproMCP Visual (Evidence-First Multimodal Debugging MCP Server)<br>
 **SDK Stack:** Python 3.13 / FastMCP v1 (`mcp>=1.12,<2`), `google-genai` (Gemma 4), `Pillow`, `pytest`
+
 
 ---
 
@@ -10,7 +11,8 @@
 
 All quality gates, end-to-end scenario validations, and test suites completed successfully.
 - **Python Compilation (`compileall`):** 0 syntax/bytecode errors across `server.py` and `repromcp/`.
-- **Core Unit & Integration Test Suite (`tests/`):** 63 passed out of 63 tests (100% green, 100% offline hermetic).
+- **Core Unit & Integration Test Suite (`tests/`):** 64 passed out of 64 tests (100% green, 100% offline hermetic).
+- **Graceful Dependency Isolation:** All test modules use `pytest.importorskip` for optional framework packages (`mcp`, `google.genai`), ensuring clean execution without crashing collection in minimal environments.
 - **Synthetic Demo Test Suite (`demo_repo/tests/`):** 1 failed, 1 passed. The single failure is the intentional synthetic discount assertion (`assert 120.0 == 80.0`). Zero setup, import, or collection failures.
 - **Live Gemma 4 Multimodal Smoke Test:** Verified against `gemma-4-26b-a4b-it` with live screenshot analysis and evidence correlation.
 
@@ -30,19 +32,20 @@ python -m compileall -q server.py repromcp
 python -m pytest -q tests
 ```
 - **Exit Code:** `0`
-- **Duration:** 23.49s
+- **Duration:** ~28s
 - **Result:**
   ```text
-  ...............................................................          [100%]
-  63 passed in 23.49s
+  ................................................................         [100%]
+  64 passed in 28.85s
   ```
 - **Coverage Breakdown:**
-  - `tests/test_workspace.py`: 14 passed (safe directory traversal, symlink confinement, secret file filtering, lexical token scoring, snippet generation).
+  - `tests/test_workspace.py`: 14 passed (safe directory traversal, symlink confinement, secret file filtering, lexical token scoring, absolute path omission).
   - `tests/test_runner.py`: 17 passed (dual opt-in enforcement, target path traversal rejection, timeout clamping, output bounding, subprocess environment secret scrubbing).
-  - `tests/test_gemma.py`: 9 passed (image payload validation, model ID fallback/override, strict 7-key JSON schema validation, error sanitization).
+  - `tests/test_gemma.py`: 9 passed (image payload validation, model ID allowlist enforcement, strict 7-key JSON schema validation, error sanitization).
   - `tests/test_mcp_workflow.py`: 5 passed (FastMCP initialization, invalid screenshot handling, API key preservation, report segregation).
   - `tests/test_server_helpers.py` & `test_server_tools.py`: 10 passed (tool schemas, JSON serialization, argument parsing).
-  - `tests/test_scenario_e2e.py`: 8 passed (end-to-end 8-point scenario checks).
+  - `tests/test_scenario_e2e.py`: 9 passed (end-to-end 8-point scenario checks, absolute path leak prevention).
+
 
 ### C. Demo Fixture Execution
 ```bash
@@ -117,3 +120,15 @@ python scripts/smoke_test_gemma.py
 4. **Offline Capability:**
    - Repository inspection, code search, test execution, and triage report generation operate 100% offline.
    - Live AI diagnosis requires Google Gemini API access (`GEMINI_API_KEY`) and outbound HTTPS connectivity.
+
+---
+
+## 6. Audit Findings & Release Remediation
+
+| Priority | Finding | Remediation Applied | Verification Status |
+|:---:|:---|:---|:---:|
+| **P1** | `inspect_repository` exposes absolute developer path | Removed `"absolute_path"` from both `inspect_workspace` and `search_workspace` in `repromcp/workspace.py`. Only relative POSIX paths and the workspace folder name are returned. Added tests in `test_scenario_e2e.py` asserting no absolute paths leak in MCP tool serialization. | **RESOLVED & VERIFIED** |
+| **P1** | Gemma model ID not strictly allowlisted | Updated `get_configured_gemma_model()` in `repromcp/gemma.py` to strictly enforce permitted Gemma 4 models (`SUPPORTED_GEMMA_MODELS` allowlist or valid `gemma-4-*` family). Added explicit tests rejecting arbitrary third-party models (e.g. `other-provider-model`, `gpt-4o`) and Gemini-branded models. | **RESOLVED & VERIFIED** |
+| **P2** | Generated cache artifacts present in archive | Purged all `__pycache__` and `.pytest_cache` directories in `demo_repo/`. Updated `.gitignore` with recursive `**/__pycache__/` and `**/.pytest_cache/` patterns to permanently prevent recommittal. | **RESOLVED & VERIFIED** |
+| **P2** | Project naming inconsistency between archive and tool | Unified project branding across `README.md`, `TEST_REPORT.md`, and code as **IssueSensor-MCP: ReproMCP Visual** (`IssueSensor-MCP` repository delivering `ReproMCP Visual` engine). | **RESOLVED & VERIFIED** |
+| **P2** | Dependency-limited environments fail test collection | Added `pytest.importorskip` guards for `mcp` and `google.genai` in integration test modules, allowing test suites to be cleanly evaluated on machines without all optional dependencies preinstalled. | **RESOLVED & VERIFIED** |

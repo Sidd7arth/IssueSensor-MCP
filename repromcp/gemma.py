@@ -43,18 +43,21 @@ DISCLAIMER: str = (
 def get_configured_gemma_model() -> str:
     """Return the configured Gemma model ID, defaulting to gemma-4-26b-a4b-it.
 
-    Validates that Gemini-branded models are not substituted for Gemma.
+    Strictly validates that the configured model is a permitted Gemma 4 model
+    (e.g., 'gemma-4-26b-a4b-it' or 'gemma-4-31b-it') or matches a valid Gemma 4 identifier.
+    Rejects Gemini-branded models and arbitrary third-party model IDs.
     """
     configured = os.environ.get("GEMMA_MODEL", "").strip()
     if configured:
         low = configured.lower()
-        if low.startswith("gemini-") and not low.startswith("gemma-"):
-            raise ValueError(
-                f"Configured model '{configured}' is a Gemini-branded model. "
-                "ReproMCP Visual requires a Gemma model (e.g., 'gemma-4-26b-a4b-it' or 'gemma-4-31b-it')."
-            )
-        return configured
+        if low in SUPPORTED_GEMMA_MODELS or (low.startswith("gemma-4-") and not low.startswith("gemini-")):
+            return configured
+        raise ValueError(
+            f"Configured model '{configured}' is not a permitted Gemma 4 model. "
+            f"ReproMCP Visual requires a Gemma 4 model from {list(SUPPORTED_GEMMA_MODELS)}."
+        )
     return DEFAULT_GEMMA_MODEL
+
 
 
 def get_api_key() -> str:
@@ -209,19 +212,22 @@ def call_gemma_analysis(
             "privacy_notice": PRIVACY_NOTICE,
         }
 
-    # 5. Check SDK dependency
+    # 5. Check SDK dependency and client
     try:
         from google import genai
         from google.genai import types
     except ImportError:
-        return {
-            "status": "dependency_missing",
-            "model": model_id,
-            "error": "google-genai SDK is not installed. Install with: pip install google-genai",
-        }
+        genai = None
+        types = None
 
-    # 6. Initialize client if not injected
     if client is None:
+        if genai is None:
+            return {
+                "status": "dependency_missing",
+                "model": model_id,
+                "error": "google-genai SDK is not installed. Install with: pip install google-genai",
+            }
+
         try:
             client = genai.Client(api_key=api_key)
         except Exception as exc:
@@ -231,7 +237,7 @@ def call_gemma_analysis(
                 "error": f"Failed to initialize Gemini API client: {exc}",
             }
 
-    # 7. Prepare prompt and contents
+    # 6. Prepare prompt and contents
     system_prompt, user_prompt = build_gemma_prompt(
         issue_text=clean_issue,
         repository_evidence=repository_evidence,
@@ -247,14 +253,18 @@ def call_gemma_analysis(
             contents.append(uploaded)
         contents.append(user_prompt)
 
+        gen_config = (
+            types.GenerateContentConfig(system_instruction=system_prompt, temperature=0.1)
+            if types is not None
+            else {"system_instruction": system_prompt, "temperature": 0.1}
+        )
+
         response = client.models.generate_content(
             model=model_id,
             contents=contents,
-            config=types.GenerateContentConfig(
-                system_instruction=system_prompt,
-                temperature=0.1,
-            ),
+            config=gen_config,
         )
+
 
         raw_text = (getattr(response, "text", "") or "").strip()
         if not raw_text:

@@ -7,7 +7,10 @@ from unittest.mock import MagicMock
 
 import pytest
 
+pytest.importorskip("mcp", reason="mcp package required for FastMCP server tests")
+
 import server
+
 from repromcp.report import build_triage_report, render_markdown_report
 
 
